@@ -1,0 +1,175 @@
+CREATE DATABASE estacionamiento;
+
+GO
+USE estacionamiento
+GO
+
+CREATE TABLE Tipo_Vehiculo
+(
+  id_tipo_vehiculo INT NOT NULL,
+  descripcion_tipo VARCHAR (50) NOT NULL,
+  CONSTRAINT PK_Tipo_Vehiculo_id PRIMARY KEY (id_tipo_vehiculo)
+);
+
+CREATE TABLE Color_Vehiculos
+(
+  id_color INT NOT NULL,
+  descripcion VARCHAR (100) NOT NULL,
+  CONSTRAINT PK_Color_Vehiculos_id PRIMARY KEY (id_color)
+);
+
+CREATE TABLE Conductor
+(
+  dni VARCHAR (10) NOT NULL,
+  nombre VARCHAR (20) NOT NULL,
+  apellido VARCHAR (20) NOT NULL,
+  fecha_nac DATE NOT NULL,
+  direccion VARCHAR (100) NOT NULL,
+  telefono VARCHAR (15) NOT NULL,
+  CONSTRAINT PK_Conductor_dni PRIMARY KEY (dni),
+  CONSTRAINT UQ_Conductor_telefono UNIQUE (telefono)
+
+);
+
+CREATE TABLE Piso
+(
+  id_piso INT NOT NULL,
+  nombre_piso VARCHAR (50) NOT NULL,
+  CONSTRAINT PK_Piso_id PRIMARY KEY (id_piso)
+);
+
+CREATE TABLE Lugares
+(
+  id_lugar INT NOT NULL,
+  nombre_lugar VARCHAR (50) NOT NULL,
+  CONSTRAINT PK_Lugares_id PRIMARY KEY (id_lugar)
+);
+
+CREATE TABLE Pisos_lugares
+(
+  id_piso INT NOT NULL,
+  id_lugar INT NOT NULL,
+  id_tipo_vehiculo INT NOT NULL,
+  CONSTRAINT PK_Piso_lugares_id PRIMARY KEY (id_piso, id_lugar),
+  CONSTRAINT FK_Pisos_lugares_id_piso FOREIGN KEY (id_piso) REFERENCES Piso(id_piso),
+  CONSTRAINT FK_Pisos_lugares_id_lugar FOREIGN KEY (id_lugar) REFERENCES Lugares(id_lugar),
+  CONSTRAINT FK_Pisos_lugares_id_tipo_vehiculo FOREIGN KEY (id_tipo_vehiculo) REFERENCES Tipo_Vehiculo(id_tipo_vehiculo)
+);
+
+CREATE TABLE Vehiculo
+(
+  id_vehiculo INT NOT NULL,
+  id_tipo_vehiculo INT NOT NULL,
+  id_color INT NOT NULL,
+  CONSTRAINT PK_Vehiculo_id PRIMARY KEY (id_vehiculo),
+  CONSTRAINT FK_Vehiculo_id_tipo_vhiculo FOREIGN KEY (id_tipo_vehiculo) REFERENCES Tipo_Vehiculo(id_tipo_vehiculo),
+  CONSTRAINT FK_Vehiculo_id_id_color FOREIGN KEY (id_color) REFERENCES Color_Vehiculos(id_color)
+);
+
+
+--select * from Vehiculos_conductor;
+
+CREATE TABLE Vehiculos_conductor
+(
+  id_vehiculo INT NOT NULL,
+  dni VARCHAR (10) NOT NULL,
+  CONSTRAINT PK_Vehiculos_conductor_id_vehiculo PRIMARY KEY (id_vehiculo, dni),
+  CONSTRAINT FK_Vehiculos_conductor_id_vehiculo FOREIGN KEY (id_vehiculo) REFERENCES Vehiculo(id_vehiculo),
+  CONSTRAINT FK_Vehivulos_conductor_id FOREIGN KEY (dni) REFERENCES Conductor(dni)
+);
+
+CREATE TABLE Ingreso_Egreso_estacionamiento
+(
+  id_ingreso INT NOT NULL,   
+  fecha_ingreso DATETIME NULL,
+  fecha_salida DATETIME NULL,
+  tiempo_estimado DECIMAL (5, 2) NULL,
+  id_vehiculo INT NOT NULL,
+  dni VARCHAR (10) NOT NULL,
+  id_piso INT NOT NULL,
+  id_lugar INT NOT NULL,
+  CONSTRAINT PK_Ingreso_Egreso_estacionamiento_id_vehiculos FOREIGN KEY (id_vehiculo, dni) REFERENCES Vehiculos_conductor(id_vehiculo, dni),
+  CONSTRAINT PK_Ingreso_Egreso_estacionamiento_id_piso FOREIGN KEY (id_piso, id_lugar) REFERENCES Pisos_lugares(id_piso, id_lugar)
+);
+--DROP TABLE Ingreso_Egreso_estacionamiento;
+
+
+--restricciones--
+
+ALTER TABLE Ingreso_Egreso_estacionamiento
+ADD CONSTRAINT CH_Ingreso_Egreso_estacionamiento
+CHECK (fecha_salida IS NULL OR fecha_salida >= fecha_ingreso);
+
+ALTER TABLE Ingreso_Egreso_estacionamiento
+ADD CONSTRAINT DF_Ingreso_Egreso_estacionamiento_fecha 
+DEFAULT GETDATE() FOR fecha_ingreso;
+
+
+--lote de pruebas -- 
+
+
+INSERT INTO Tipo_Vehiculo (id_tipo_vehiculo, descripcion_tipo) VALUES (1, 'Automovil'), (2, 'Motocicleta');
+
+select * from Color_Vehiculos;
+
+-- Insertar colores
+INSERT INTO Color_Vehiculos (id_color, descripcion) VALUES (1, 'Rojo'), (2, 'Azul');
+
+
+select * from Conductor;
+
+-- Insertar conductores
+INSERT INTO Conductor (dni, nombre, apellido, fecha_nac, direccion, telefono) 
+VALUES ('12345678', 'Juan', 'Perez', '1985-01-01', 'Calle Falsa 123', '1111111111');
+
+select * from Piso;
+
+-- Insertar pisos y lugares
+INSERT INTO Piso (id_piso, nombre_piso) VALUES (1, 'Piso 1');
+INSERT INTO Lugares (id_lugar, nombre_lugar) VALUES (1, 'Lugar 1');
+
+select * from Pisos_lugares;
+
+-- Relacionar pisos y lugares con tipo de veh culo
+INSERT INTO Pisos_lugares (id_piso, id_lugar, id_tipo_vehiculo) VALUES (1, 1, 1);
+
+select * from Vehiculo;
+-- Insertar veh culos
+INSERT INTO Vehiculo (id_vehiculo, id_tipo_vehiculo, id_color) VALUES (1, 1, 1);
+
+select * from Vehiculos_conductor;
+-- Relacionar veh culos y conductores
+INSERT INTO Vehiculos_conductor (id_vehiculo, dni) VALUES (1, '12345678');
+
+select * from Ingreso_Egreso_estacionamiento;
+
+-- Insertar ingreso sin fecha de salida
+INSERT INTO Ingreso_Egreso_estacionamiento (id_ingreso, fecha_ingreso, tiempo_estimado, id_vehiculo, dni, id_piso, id_lugar) 
+VALUES (1, GETDATE(), 1.00, 1, '12345678', 1, 1);
+
+
+--pruebas para validar restricciones--
+
+-- Intentar ingresar un registro con una fecha de salida anterior a la fecha de ingreso (debe fallar)
+INSERT INTO Ingreso_Egreso_estacionamiento (id_ingreso, fecha_ingreso, fecha_salida, tiempo_estimado, id_vehiculo, dni, id_piso, id_lugar)
+VALUES (2, '2024-09-22', '2024-09-21', '1 hora', 1, '12345678', 1, 1);
+
+-- Ingresar un registro sin proporcionar fecha_ingreso, debe tomar la fecha actual
+INSERT INTO Ingreso_Egreso_estacionamiento (id_ingreso, tiempo_estimado, id_vehiculo, dni, id_piso, id_lugar)
+VALUES (3, '2 horas', 1, '12345678', 1, 1);
+
+-- Insertar un conductor con un tel fono duplicado (debe fallar)
+INSERT INTO Conductor (dni, nombre, apellido, fecha_nac, direccion, telefono) 
+VALUES ('87654321', 'Maria', 'Gomez', '1990-02-15', 'Calle Real 456', '1111111111');
+
+
+-- Ingreso un conductor que no existe en la tabla Conductor (debe fallar)
+INSERT INTO Ingreso_Egreso_estacionamiento (id_ingreso, fecha_ingreso, tiempo_estimado, id_vehiculo, dni, id_piso, id_lugar)
+VALUES (4, DEFAULT, '1 d a', 1, '99999999', 1, 1);
+
+-- Registro con un id_ingreso duplicado (debe fallar)
+INSERT INTO Ingreso_Egreso_estacionamiento (id_ingreso, fecha_ingreso, tiempo_estimado, id_vehiculo, dni, id_piso, id_lugar)
+VALUES (1, DEFAULT, '3 horas', 1, '12345678', 1, 1);
+
+
+
